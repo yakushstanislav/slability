@@ -27,9 +27,11 @@ fn start_monitors(config: Config) -> Vec<Monitor> {
 pub fn run(config: Config) -> Result<(), Box<dyn Error>> {
     let monitors = start_monitors(config);
 
+    let context = terminal::Context::new();
+
     let mut terminal = terminal::initialize()?;
 
-    terminal::run(&mut terminal, &monitors)?;
+    terminal::run(&mut terminal, &context, &monitors)?;
 
     terminal::destroy(&mut terminal)?;
 

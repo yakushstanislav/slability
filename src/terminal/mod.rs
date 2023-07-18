@@ -9,6 +9,7 @@ use crossterm::{
 };
 
 use tui::layout::Rect;
+use tui::style::Modifier;
 use tui::text::Spans;
 use tui::widgets::Paragraph;
 use tui::{
@@ -21,6 +22,18 @@ use tui::{
 };
 
 use crate::monitor::Monitor;
+
+pub struct Context {
+    start_time: Instant,
+}
+
+impl Context {
+    pub fn new() -> Self {
+        Context {
+            start_time: Instant::now(),
+        }
+    }
+}
 
 pub fn initialize() -> Result<Terminal<CrosstermBackend<io::Stdout>>, Box<dyn Error>> {
     enable_raw_mode()?;
@@ -50,13 +63,17 @@ pub fn destroy(
     Ok(())
 }
 
-pub fn run<B: Backend>(terminal: &mut Terminal<B>, monitors: &Vec<Monitor>) -> io::Result<()> {
+pub fn run<B: Backend>(
+    terminal: &mut Terminal<B>,
+    context: &Context,
+    monitors: &Vec<Monitor>,
+) -> io::Result<()> {
     const TICK_RATE: Duration = Duration::from_secs(1);
 
     let mut last_tick = Instant::now();
 
     loop {
-        terminal.draw(|frame| draw_ui(frame, monitors))?;
+        terminal.draw(|frame| draw_ui(frame, context, monitors))?;
 
         let timeout = TICK_RATE
             .checked_sub(last_tick.elapsed())
@@ -76,7 +93,7 @@ pub fn run<B: Backend>(terminal: &mut Terminal<B>, monitors: &Vec<Monitor>) -> i
     }
 }
 
-fn draw_ui<B: Backend>(frame: &mut Frame<B>, monitors: &Vec<Monitor>) {
+fn draw_ui<B: Backend>(frame: &mut Frame<B>, context: &Context, monitors: &Vec<Monitor>) {
     let size = frame.size();
 
     let body = Layout::default()
@@ -93,7 +110,7 @@ fn draw_ui<B: Backend>(frame: &mut Frame<B>, monitors: &Vec<Monitor>) {
 
     draw_ui_header(frame, body[0]);
     draw_ui_body(frame, body[1], monitors);
-    draw_ui_footer(frame, body[2]);
+    draw_ui_footer(frame, body[2], context);
 }
 
 fn draw_ui_header<B: Backend>(frame: &mut Frame<B>, area: Rect) {
@@ -109,7 +126,7 @@ fn draw_ui_header<B: Backend>(frame: &mut Frame<B>, area: Rect) {
 }
 
 fn draw_ui_body<B: Backend>(frame: &mut Frame<B>, area: Rect, monitors: &Vec<Monitor>) {
-    let constraints: Vec<_> = monitors.iter().map(|_| Constraint::Min(3)).collect();
+    let constraints: Vec<_> = monitors.iter().map(|_| Constraint::Length(3)).collect();
 
     let data = Layout::default()
         .direction(Direction::Vertical)
@@ -154,8 +171,27 @@ fn draw_ui_body<B: Backend>(frame: &mut Frame<B>, area: Rect, monitors: &Vec<Mon
     }
 }
 
-fn draw_ui_footer<B: Backend>(frame: &mut Frame<B>, area: Rect) {
-    let quit = Block::default().title(vec![Span::styled("Press 'q' to quit.", Style::default())]);
+fn draw_ui_footer<B: Backend>(frame: &mut Frame<B>, area: Rect, context: &Context) {
+    let chunks = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Percentage(50), Constraint::Percentage(50)].as_ref())
+        .split(area);
 
-    frame.render_widget(quit, area);
+    let style = Style::default().fg(Color::DarkGray);
+
+    let quit = Paragraph::new(Spans::from(vec![Span::raw("Press 'q' to quit.")]))
+        .style(style)
+        .alignment(Alignment::Left)
+        .wrap(tui::widgets::Wrap { trim: true });
+
+    let elapsed = Paragraph::new(Spans::from(vec![Span::raw(format!(
+        "Elapsed: {}s",
+        context.start_time.elapsed().as_secs()
+    ))]))
+    .style(style.add_modifier(Modifier::BOLD))
+    .alignment(Alignment::Right)
+    .wrap(tui::widgets::Wrap { trim: true });
+
+    frame.render_widget(quit, chunks[0]);
+    frame.render_widget(elapsed, chunks[1]);
 }
