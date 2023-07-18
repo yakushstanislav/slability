@@ -1,6 +1,6 @@
+use std::error::Error;
 use std::io;
-use std::time::Instant;
-use std::{error::Error, time::Duration};
+use std::time::{Duration, Instant};
 
 use crossterm::{
     event::{self, DisableMouseCapture, EnableMouseCapture, Event, KeyCode},
@@ -84,7 +84,7 @@ fn draw_ui<B: Backend>(frame: &mut Frame<B>, monitors: &Vec<Monitor>) {
         .constraints(
             [
                 Constraint::Length(1),
-                Constraint::Min(1),
+                Constraint::Min(3),
                 Constraint::Length(1),
             ]
             .as_ref(),
@@ -92,42 +92,7 @@ fn draw_ui<B: Backend>(frame: &mut Frame<B>, monitors: &Vec<Monitor>) {
         .split(size);
 
     draw_ui_header(frame, body[0]);
-
-    let constraints: Vec<_> = monitors.iter().map(|_| Constraint::Length(1)).collect();
-
-    let data = Layout::default()
-        .direction(Direction::Vertical)
-        .constraints(constraints.as_ref())
-        .split(body[1]);
-
-    for (index, monitor) in monitors.iter().enumerate() {
-        let text = Spans::from(vec![
-            Span::styled(monitor.name(), Style::default().fg(Color::Blue)),
-            Span::raw(" "),
-            Span::styled(
-                monitor.address().to_string(),
-                Style::default().fg(Color::Yellow),
-            ),
-            Span::raw(" "),
-            Span::styled(
-                match monitor.get_state().is_online() {
-                    Some(true) => "ONLINE",
-                    Some(false) => "OFFLINE",
-                    None => "WAIT",
-                },
-                Style::default().fg(match monitor.get_state().is_online() {
-                    Some(true) => Color::Green,
-                    Some(false) => Color::Red,
-                    None => Color::DarkGray,
-                }),
-            ),
-        ]);
-
-        let paragraph = Paragraph::new(text);
-
-        frame.render_widget(paragraph, data[index]);
-    }
-
+    draw_ui_body(frame, body[1], monitors);
     draw_ui_footer(frame, body[2]);
 }
 
@@ -143,11 +108,54 @@ fn draw_ui_header<B: Backend>(frame: &mut Frame<B>, area: Rect) {
     frame.render_widget(header, area);
 }
 
+fn draw_ui_body<B: Backend>(frame: &mut Frame<B>, area: Rect, monitors: &Vec<Monitor>) {
+    let constraints: Vec<_> = monitors.iter().map(|_| Constraint::Min(3)).collect();
+
+    let data = Layout::default()
+        .direction(Direction::Vertical)
+        .constraints(constraints.as_ref())
+        .split(area);
+
+    for (index, monitor) in monitors.iter().enumerate() {
+        let text = Spans::from(vec![
+            Span::styled("IP: ", Style::default().fg(Color::Blue)),
+            Span::styled(
+                monitor.address().to_string(),
+                Style::default().fg(Color::Yellow),
+            ),
+            Span::raw(" "),
+            Span::styled(
+                format!(
+                    "[{}]",
+                    match monitor.get_state().is_online() {
+                        Some(true) => "ONLINE",
+                        Some(false) => "OFFLINE",
+                        None => "WAIT",
+                    }
+                ),
+                Style::default().fg(match monitor.get_state().is_online() {
+                    Some(true) => Color::Green,
+                    Some(false) => Color::Red,
+                    None => Color::DarkGray,
+                }),
+            ),
+        ]);
+
+        let block = Block::default()
+            .title(vec![Span::styled(
+                monitor.name(),
+                Style::default().fg(Color::Blue),
+            )])
+            .title_alignment(Alignment::Center);
+
+        let paragraph = Paragraph::new(text).block(block);
+
+        frame.render_widget(paragraph, data[index]);
+    }
+}
+
 fn draw_ui_footer<B: Backend>(frame: &mut Frame<B>, area: Rect) {
-    let quit = Block::default().title(vec![Span::styled(
-        "Press 'q' to quit.",
-        Style::default().fg(Color::Gray),
-    )]);
+    let quit = Block::default().title(vec![Span::styled("Press 'q' to quit.", Style::default())]);
 
     frame.render_widget(quit, area);
 }
