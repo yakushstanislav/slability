@@ -14,14 +14,16 @@ pub struct Config {
 }
 
 pub struct Monitor {
-    pub config: Config,
+    name: String,
+    config: Config,
 
     state: Arc<Mutex<State>>,
 }
 
 impl Monitor {
-    pub fn new(config: Config) -> Self {
+    pub fn new(name: String, config: Config) -> Self {
         Monitor {
+            name,
             config,
             state: Arc::new(Mutex::new(State::new())),
         }
@@ -41,6 +43,10 @@ impl Monitor {
 
             std::thread::sleep(config.interval);
         });
+    }
+
+    pub fn name(&self) -> &String {
+        &self.name
     }
 
     pub fn address(&self) -> SocketAddr {

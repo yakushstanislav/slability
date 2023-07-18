@@ -102,6 +102,8 @@ fn draw_ui<B: Backend>(frame: &mut Frame<B>, monitors: &Vec<Monitor>) {
 
     for (index, monitor) in monitors.iter().enumerate() {
         let text = Spans::from(vec![
+            Span::styled(monitor.name(), Style::default().fg(Color::Blue)),
+            Span::raw(" "),
             Span::styled(
                 monitor.address().to_string(),
                 Style::default().fg(Color::Yellow),
