@@ -21,6 +21,8 @@ use tui::{
     Frame, Terminal,
 };
 
+use time::format_description;
+
 use crate::monitor::Monitor;
 
 pub struct Context {
@@ -128,10 +130,13 @@ fn draw_ui_header<B: Backend>(frame: &mut Frame<B>, area: Rect) {
 fn draw_ui_body<B: Backend>(frame: &mut Frame<B>, area: Rect, monitors: &Vec<Monitor>) {
     let constraints: Vec<_> = monitors.iter().map(|_| Constraint::Length(3)).collect();
 
-    let data = Layout::default()
+    let chunks = Layout::default()
         .direction(Direction::Vertical)
         .constraints(constraints.as_ref())
         .split(area);
+
+    let format =
+        format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second]").unwrap();
 
     for (index, monitor) in monitors.iter().enumerate() {
         let text = Spans::from(vec![
@@ -156,6 +161,41 @@ fn draw_ui_body<B: Backend>(frame: &mut Frame<B>, area: Rect, monitors: &Vec<Mon
                     None => Color::DarkGray,
                 }),
             ),
+            Span::raw(" "),
+            Span::styled(
+                format!("RESTARTS: {}", monitor.get_state().restarts()),
+                Style::default().fg(Color::Cyan),
+            ),
+            Span::raw(" "),
+            Span::styled(
+                format!(
+                    "ON_TIME: {} [{}s]",
+                    match monitor.get_state().last_online() {
+                        Some(time) => time.format(&format).unwrap().to_string(),
+                        None => "N/A".to_string(),
+                    },
+                    match monitor.get_state().elapsed_online() {
+                        Some(time) => time.elapsed().as_secs().to_string(),
+                        None => 0.to_string(),
+                    }
+                ),
+                Style::default().fg(Color::LightCyan),
+            ),
+            Span::raw(" "),
+            Span::styled(
+                format!(
+                    "OFF_TIME: {} [{}s]",
+                    match monitor.get_state().last_offline() {
+                        Some(time) => time.format(&format).unwrap().to_string(),
+                        None => "N/A".to_string(),
+                    },
+                    match monitor.get_state().elapsed_offline() {
+                        Some(time) => time.elapsed().as_secs().to_string(),
+                        None => 0.to_string(),
+                    }
+                ),
+                Style::default().fg(Color::LightRed),
+            ),
         ]);
 
         let block = Block::default()
@@ -167,7 +207,7 @@ fn draw_ui_body<B: Backend>(frame: &mut Frame<B>, area: Rect, monitors: &Vec<Mon
 
         let paragraph = Paragraph::new(text).block(block);
 
-        frame.render_widget(paragraph, data[index]);
+        frame.render_widget(paragraph, chunks[index]);
     }
 }
 
@@ -184,6 +224,8 @@ fn draw_ui_footer<B: Backend>(frame: &mut Frame<B>, area: Rect, context: &Contex
         .alignment(Alignment::Left)
         .wrap(tui::widgets::Wrap { trim: true });
 
+    frame.render_widget(quit, chunks[0]);
+
     let elapsed = Paragraph::new(Spans::from(vec![Span::raw(format!(
         "Elapsed: {}s",
         context.start_time.elapsed().as_secs()
@@ -192,6 +234,5 @@ fn draw_ui_footer<B: Backend>(frame: &mut Frame<B>, area: Rect, context: &Contex
     .alignment(Alignment::Right)
     .wrap(tui::widgets::Wrap { trim: true });
 
-    frame.render_widget(quit, chunks[0]);
     frame.render_widget(elapsed, chunks[1]);
 }
