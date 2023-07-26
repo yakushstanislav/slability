@@ -9,7 +9,7 @@ use clap::Parser;
     name = "slability",
     bin_name = "slability",
     version,
-    about = "Address availability monitoring tool."
+    about = "Network address availability monitoring tool."
 )]
 pub struct Config {
     #[arg(short = 'a', long, required = true, value_parser = parse_socket_address, num_args = 1.., help = "List of addresses")]
