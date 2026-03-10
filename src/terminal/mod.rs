@@ -29,6 +29,12 @@ pub struct Context {
     start_time: Instant,
 }
 
+impl Default for Context {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl Context {
     pub fn new() -> Self {
         Context {
@@ -68,7 +74,7 @@ pub fn destroy(
 pub fn run<B: Backend>(
     terminal: &mut Terminal<B>,
     context: &Context,
-    monitors: &Vec<Monitor>,
+    monitors: &[Monitor],
 ) -> io::Result<()> {
     const TICK_RATE: Duration = Duration::from_secs(1);
 
@@ -95,7 +101,7 @@ pub fn run<B: Backend>(
     }
 }
 
-fn draw_ui<B: Backend>(frame: &mut Frame<B>, context: &Context, monitors: &Vec<Monitor>) {
+fn draw_ui<B: Backend>(frame: &mut Frame<B>, context: &Context, monitors: &[Monitor]) {
     let size = frame.size();
 
     let body = Layout::default()
@@ -127,7 +133,7 @@ fn draw_ui_header<B: Backend>(frame: &mut Frame<B>, area: Rect) {
     frame.render_widget(header, area);
 }
 
-fn draw_ui_body<B: Backend>(frame: &mut Frame<B>, area: Rect, monitors: &Vec<Monitor>) {
+fn draw_ui_body<B: Backend>(frame: &mut Frame<B>, area: Rect, monitors: &[Monitor]) {
     let constraints: Vec<_> = monitors.iter().map(|_| Constraint::Length(3)).collect();
 
     let chunks = Layout::default()
@@ -135,8 +141,8 @@ fn draw_ui_body<B: Backend>(frame: &mut Frame<B>, area: Rect, monitors: &Vec<Mon
         .constraints(constraints.as_ref())
         .split(area);
 
-    let format =
-        format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second]").unwrap();
+    let format = format_description::parse("[year]-[month]-[day] [hour]:[minute]:[second]")
+        .expect("time format description must be valid");
 
     for (index, monitor) in monitors.iter().enumerate() {
         let text = Spans::from(vec![
@@ -171,7 +177,9 @@ fn draw_ui_body<B: Backend>(frame: &mut Frame<B>, area: Rect, monitors: &Vec<Mon
                 format!(
                     "ON_TIME: {} [{}s]",
                     match monitor.get_state().last_online() {
-                        Some(time) => time.format(&format).unwrap().to_string(),
+                        Some(time) => time
+                            .format(&format)
+                            .unwrap_or_else(|_| "N/A".to_string()),
                         None => "N/A".to_string(),
                     },
                     match monitor.get_state().elapsed_online() {
@@ -186,7 +194,9 @@ fn draw_ui_body<B: Backend>(frame: &mut Frame<B>, area: Rect, monitors: &Vec<Mon
                 format!(
                     "OFF_TIME: {} [{}s]",
                     match monitor.get_state().last_offline() {
-                        Some(time) => time.format(&format).unwrap().to_string(),
+                        Some(time) => time
+                            .format(&format)
+                            .unwrap_or_else(|_| "N/A".to_string()),
                         None => "N/A".to_string(),
                     },
                     match monitor.get_state().elapsed_offline() {

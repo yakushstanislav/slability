@@ -34,10 +34,8 @@ impl Monitor {
         let state = Arc::clone(&self.state);
 
         std::thread::spawn(move || loop {
-            let is_online = match TcpStream::connect_timeout(&config.address, config.timeout) {
-                Ok(_) => true,
-                Err(_) => false,
-            };
+            let is_online =
+                TcpStream::connect_timeout(&config.address, config.timeout).is_ok();
 
             state.lock().unwrap().set_is_online(is_online);
 
@@ -54,6 +52,6 @@ impl Monitor {
     }
 
     pub fn get_state(&self) -> State {
-        self.state.lock().unwrap().clone()
+        *self.state.lock().unwrap()
     }
 }

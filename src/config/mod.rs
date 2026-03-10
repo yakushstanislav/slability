@@ -28,7 +28,7 @@ fn parse_socket_address(
     let addresses: Vec<SocketAddr> = value.to_socket_addrs()?.collect();
 
     match addresses.first() {
-        Some(address) => Ok((value.to_string(), address.clone())),
+        Some(address) => Ok((value.to_string(), *address)),
         None => Err("socket address not found".into()),
     }
 }

@@ -14,6 +14,12 @@ pub struct State {
     restarts: u32,
 }
 
+impl Default for State {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl State {
     pub fn new() -> Self {
         State {
@@ -35,18 +41,22 @@ impl State {
                 self.last_online = None;
                 self.elapsed_online = None;
 
-                self.last_offline = Some(OffsetDateTime::now_local().unwrap());
+                self.last_offline = Some(
+                    OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc()),
+                );
                 self.elapsed_offline = Some(Instant::now());
             }
         } else if let Some(false) = self.is_online {
             if is_online {
-                self.last_online = Some(OffsetDateTime::now_local().unwrap());
+                self.last_online = Some(
+                    OffsetDateTime::now_local().unwrap_or_else(|_| OffsetDateTime::now_utc()),
+                );
                 self.elapsed_online = Some(Instant::now());
 
                 self.last_offline = None;
                 self.elapsed_offline = None;
 
-                self.restarts = self.restarts + 1;
+                self.restarts += 1;
             }
         }
 
